@@ -1,0 +1,399 @@
+import pynecone as pc
+from .helpers import navbar
+
+
+class User(pc.Model, table=True):
+    username: str
+    userid: str
+    password: str
+
+
+class Question(pc.Model, table=True):
+    ask: str
+    answer: str
+    question_index: int
+    classification: str
+    mbti_type: str
+
+
+class MbtiResult(pc.Model, table=True):
+    userid: str
+    try_userid: str
+    username: str
+    try_username: str
+    mbti: str
+    score: float
+    question_result: str
+    try_question: str
+
+
+class State(pc.State):
+    userid: str = ""
+    username_set: str = ""
+    username: str = ""
+    password: str = ""
+    confirm_password: str = ""
+    logged_in: bool = False
+
+    question_idx: int = 1
+    question_progress: float = 100 / 12 * question_idx
+
+    question_answer: dict = {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: "", }
+    question_data: list = []
+    question_data_state: bool = False
+
+    usermbti: str = ""
+    mbti_data: dict = {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}
+
+    def login(self):
+        with pc.session() as session:
+            user = session.query(User).where(User.userid == self.userid).first()
+            if user and user.password == self.password:
+                self.logged_in = True
+                self.username = user.username
+                return pc.redirect(f"/{self.userid}")
+            else:
+                return pc.window_alert("아이디, 비밀번호를 확인해주세요")
+
+    def logout(self):
+        self.reset()
+        return pc.redirect("/")
+
+    def signup(self):
+        with pc.session() as session:
+            if not (self.username_set and self.userid and self.password):
+                return pc.window_alert("이름, 아이디, 비밀번호를 확인해주세요")
+            exist_user = session.query(User).where(User.userid == self.userid).first()
+            if exist_user:
+                return pc.window_alert("이미 존재하는 아이디입니다")
+            if self.password == self.confirm_password:
+                user = User(userid=self.userid, password=self.password, username=self.username_set)
+                session.add(user)
+                session.commit()
+            else:
+                return pc.window_alert("비밀번호가 일치하지 않습니다")
+        return pc.redirect("/")
+
+    def set_username(self, username):
+        self.username_set = username.strip()
+
+    def set_userid(self, userid):
+        self.userid = userid.strip()
+
+    def set_password(self, password):
+        self.password = password.strip()
+
+    def set_confirm_password(self, confirm_password):
+        self.confirm_password = confirm_password.strip()
+
+    @pc.var
+    def user_page(self):
+        with pc.session() as session:
+            exist_user = session.query(User).where(User.userid == self.get_query_params().get("user")).first()
+            if exist_user:
+                return self.get_query_params().get("user")
+        return "존재하지 않는 아이디입니다"
+
+    def load_question(self):
+        with pc.session() as session:
+            self.question_data = session.query(Question).all()
+            self.question_data_state = True
+            return pc.redirect("/question")
+
+    def next_question(self):
+        if self.question_idx == 12:
+            return self.get_result()
+        self.question_idx += 1
+        self.question_progress = 100 / 12 * self.question_idx
+
+    def prev_question(self):
+        if self.question_idx == 1:
+            return pc.redirect(f"/{self.userid}")
+        self.question_idx -= 1
+        self.question_progress = 100 / 12 * self.question_idx
+
+    @pc.var
+    def get_ask(self):
+        if self.question_data:
+            return self.question_data[(self.question_idx - 1) * 2].ask
+
+    @pc.var
+    def get_answer_1(self):
+        if self.question_data:
+            return self.question_data[(self.question_idx - 1) * 2].answer
+
+    @pc.var
+    def get_answer_2(self):
+        if self.question_data:
+            return self.question_data[(self.question_idx - 1) * 2 + 1].answer
+
+    @pc.var
+    def get_color1(self):
+        if self.question_answer[self.question_idx] in ["E", "S", "T", "J"]:
+            return "blue"
+
+    @pc.var
+    def get_color2(self):
+        if self.question_answer[self.question_idx] in ["I", "N", "F", "P"]:
+            return "blue"
+
+    def change_answer(self, question_answer):
+        self.question_answer[self.question_idx] = self.question_data[(self.question_idx - 1) * 2 + question_answer].mbti_type
+
+        if self.question_idx == 12:
+            return self.get_result()
+        self.question_idx += 1
+        self.question_progress = 100 / 12 * self.question_idx
+
+    def get_result(self):
+        for k, v in self.question_answer.items():
+            if not v:
+                return pc.window_alert(f"{k}번 질문의 답변을 확인해주세요")
+            self.mbti_data[v] += 1
+        if self.mbti_data["E"] > self.mbti_data["I"]: self.usermbti += "E"
+        else: self.usermbti += "I"
+        if self.mbti_data["S"] > self.mbti_data["N"]: self.usermbti += "S"
+        else: self.usermbti += "N"
+        if self.mbti_data["T"] > self.mbti_data["F"]: self.usermbti += "T"
+        else: self.usermbti += "F"
+        if self.mbti_data["J"] > self.mbti_data["P"]: self.usermbti += "J"
+        else: self.usermbti += "P"
+
+        with pc.session() as session:
+            result = MbtiResult(userid=self.userid, try_userid=self.userid, username=self.username, try_username=self.username, mbti=self.usermbti, score=100.0, question_result=str(self.question_answer), try_question=str(self.question_answer))
+            session.add(result)
+            session.commit()
+
+        return pc.redirect("/result")
+
+
+def home():
+    return pc.center(
+        navbar(State),
+        pc.vstack(
+            pc.center(
+                pc.vstack(
+                    pc.heading("MBTI 테스트", font_size="1.52m"),
+                ),
+                width="100%",
+            ),
+        ),
+        padding_top="6em",
+        text_align="top",
+        position="relative",
+    )
+
+
+def login():
+    return pc.center(
+        pc.vstack(
+            pc.input(on_blur=State.set_userid, placeholder="아이디", width="100%"),
+            pc.input(type_="password", on_blur=State.set_password, placeholder="비밀번호", width="100%"),
+            pc.button("로그인", on_click=State.login, width="100%"),
+            pc.link(pc.button("회원가입", width="100%"), href="/signup", width="100%"),
+        ),
+        shadow="lg",
+        padding="1em",
+        border_radius="lg",
+        background="white",
+    )
+
+
+def signup():
+    return pc.box(
+        pc.vstack(
+            navbar(State),
+            pc.center(
+                pc.vstack(
+                    pc.heading("MBTI 테스트 회원가입", font_size="1.5em"),
+                    pc.input(
+                        on_blur=State.set_username, placeholder="이름", width="100%"
+                    ),
+                    pc.input(
+                        on_blur=State.set_userid, placeholder="아이디", width="100%"
+                    ),
+                    pc.input(
+                        type_="password", on_blur=State.set_password, placeholder="비밀번호", width="100%"
+                    ),
+                    pc.input(
+                        type_="password",
+                        on_blur=State.set_confirm_password,
+                        placeholder="비밀번호 재확인",
+                        width="100%",
+                    ),
+                    pc.button("회원가입", on_click=State.signup, width="100%"),
+                ),
+                shadow="lg",
+                padding="1em",
+                border_radius="lg",
+                background="white",
+            )
+        ),
+        padding_top="10em",
+        text_align="top",
+        position="relative",
+        width="100%",
+        height="100vh",
+        background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
+    )
+
+
+def index():
+    return pc.box(
+        pc.vstack(
+            navbar(State),
+            pc.cond(
+                State.logged_in,
+                pc.center(
+                    pc.link(pc.button("마이페이지", width="100%"), href="/"+State.userid, width="100%"),
+                ),
+                login(),
+            ),
+        ),
+        padding_top="10em",
+        text_align="top",
+        position="relative",
+        width="100%",
+        height="100vh",
+        background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
+    )
+
+
+def user():
+    return pc.box(
+        pc.vstack(
+            navbar(State),
+            pc.center(
+                pc.vstack(
+                    pc.cond(
+                        State.logged_in,
+                        pc.heading(State.user_page, font_size="1.52m"),
+                        pc.center(
+                            pc.link(pc.button("로그인", width="100%"), href="/", width="100%"),
+                        ),
+                    ),
+                    pc.cond(
+                        State.logged_in,
+                        pc.button(
+                            "테스트 진행하기",
+                            on_click=State.load_question
+                        ),
+                    ),
+                ),
+                width="100%",
+            ),
+        ),
+        padding_top="10em",
+        text_align="top",
+        position="relative",
+        width="100%",
+        height="100vh",
+        background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
+    )
+
+
+def question():
+    return pc.box(
+        pc.vstack(
+            navbar(State),
+            pc.cond(
+                State.question_data_state,
+                pc.center(
+                    pc.vstack(
+                        pc.heading(State.get_ask),
+                        pc.hstack(
+                            pc.button(
+                                State.get_answer_1,
+                                on_click=lambda mbti_type: State.change_answer(0),
+                                color=State.get_color1
+                            ),
+                            pc.center(
+                                pc.divider(
+                                    orientation="vertical", border_color="black"
+                                ),
+                                height="4em",
+                            ),
+                            pc.button(
+                                State.get_answer_2,
+                                on_click=lambda mbti_type: State.change_answer(1),
+                                color=State.get_color2
+                            )
+                        ),
+                        pc.hstack(
+                            pc.button(
+                                "<",
+                                on_click=State.prev_question
+                            ),
+                            pc.button(
+                                ">",
+                                on_click=State.next_question
+                            ),
+                        ),
+                        pc.vstack(
+                            pc.progress(value=State.question_progress, width="100%"),
+                            spacing="1em",
+                            min_width=["10em", "20em"]
+                        )
+                    ),
+                    shadow="lg",
+                    padding="1em",
+                    border_radius="lg",
+                    background="white",
+                ),
+                pc.center(
+                    pc.vstack(
+                        pc.cond(
+                            State.logged_in,
+                            pc.button(
+                                "테스트 진행하기",
+                                on_click=State.load_question
+                            ),
+                            pc.center(
+                                pc.link(pc.button("로그인", width="100%"), href="/", width="100%"),
+                            )
+                        )
+                    )
+                )
+            )
+        ),
+        padding_top="10em",
+        text_align="top",
+        position="relative",
+        width="100%",
+        height="100vh",
+        background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
+    )
+
+
+def result():
+    return pc.box(
+        pc.vstack(
+            navbar(State),
+            pc.center(
+                pc.vstack(
+                    pc.text(State.username+"의 MBTI: "+State.usermbti)
+                ),
+                shadow="lg",
+                padding="1em",
+                border_radius="lg",
+                background="white",
+            )
+        ),
+        padding_top="10em",
+        text_align="top",
+        position="relative",
+        width="100%",
+        height="100vh",
+        background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
+    )
+
+
+app = pc.App(state=State)
+app.add_page(index, title="MBTI Demo",)
+app.add_page(signup)
+app.add_page(home)
+app.add_page(user, route="/[user]")
+app.add_page(question)
+app.add_page(result)
+# app.add_page(question, route="/question/[user]")
+app.compile()
