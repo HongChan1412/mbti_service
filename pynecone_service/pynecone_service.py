@@ -130,12 +130,12 @@ class State(pc.State):
     @pc.var
     def get_color1(self):
         if self.question_answer[self.question_idx] in ["E", "S", "T", "J"]:
-            return "blue"
+            return "rgb(29 161 242)"
 
     @pc.var
     def get_color2(self):
         if self.question_answer[self.question_idx] in ["I", "N", "F", "P"]:
-            return "blue"
+            return "rgb(29 161 242)"
 
     def change_answer(self, question_answer):
         self.question_answer[self.question_idx] = self.question_data[(self.question_idx - 1) * 2 + question_answer].mbti_type
@@ -160,10 +160,14 @@ class State(pc.State):
         else: self.usermbti += "P"
 
         with pc.session() as session:
-            result = MbtiResult(userid=self.userid, try_userid=self.userid, username=self.username, try_username=self.username, mbti=self.usermbti, score=100.0, question_result=str(self.question_answer), try_question=str(self.question_answer))
-            session.add(result)
+            exist_result = session.query(MbtiResult).where(MbtiResult.userid == self.userid, MbtiResult.try_userid == self.userid)
+            if exist_result:
+                session.query(MbtiResult).where(MbtiResult.userid == self.userid, MbtiResult.try_userid == self.userid).update({"userid": self.userid, "try_userid": self.userid, "username": self.username, "try_username": self.username, "mbti": self.usermbti, "score": 100.0, "question_result": str(self.question_answer), "try_question": str(self.question_answer)})
+            else:
+                result = MbtiResult(userid=self.userid, try_userid=self.userid, username=self.username, try_username=self.username, mbti=self.usermbti, score=100.0, question_result=str(self.question_answer), try_question=str(self.question_answer))
+                session.add(result)
             session.commit()
-
+        self.mbti_data = {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: "", }
         return pc.redirect("/result")
 
 
@@ -187,8 +191,8 @@ def home():
 def login():
     return pc.center(
         pc.vstack(
-            pc.input(on_blur=State.set_userid, placeholder="아이디", width="100%"),
-            pc.input(type_="password", on_blur=State.set_password, placeholder="비밀번호", width="100%"),
+            pc.input(on_blur=State.set_userid, placeholder="Userid", width="100%"),
+            pc.input(type_="password", on_blur=State.set_password, placeholder="Password", width="100%"),
             pc.button("로그인", on_click=State.login, width="100%"),
             pc.link(pc.button("회원가입", width="100%"), href="/signup", width="100%"),
         ),
@@ -207,18 +211,18 @@ def signup():
                 pc.vstack(
                     pc.heading("MBTI 테스트 회원가입", font_size="1.5em"),
                     pc.input(
-                        on_blur=State.set_username, placeholder="이름", width="100%"
+                        on_blur=State.set_username, placeholder="Username", width="100%"
                     ),
                     pc.input(
-                        on_blur=State.set_userid, placeholder="아이디", width="100%"
+                        on_blur=State.set_userid, placeholder="Userid", width="100%"
                     ),
                     pc.input(
-                        type_="password", on_blur=State.set_password, placeholder="비밀번호", width="100%"
+                        type_="password", on_blur=State.set_password, placeholder="Password", width="100%"
                     ),
                     pc.input(
                         type_="password",
                         on_blur=State.set_confirm_password,
-                        placeholder="비밀번호 재확인",
+                        placeholder="Password Confirm",
                         width="100%",
                     ),
                     pc.button("회원가입", on_click=State.signup, width="100%"),
@@ -268,9 +272,7 @@ def user():
                     pc.cond(
                         State.logged_in,
                         pc.heading(State.user_page, font_size="1.52m"),
-                        pc.center(
-                            pc.link(pc.button("로그인", width="100%"), href="/", width="100%"),
-                        ),
+                        login()
                     ),
                     pc.cond(
                         State.logged_in,
@@ -300,12 +302,13 @@ def question():
                 State.question_data_state,
                 pc.center(
                     pc.vstack(
-                        pc.heading(State.get_ask),
+                        pc.heading("질문"+State.question_idx),
+                        pc.text(State.get_ask),
                         pc.hstack(
                             pc.button(
                                 State.get_answer_1,
-                                on_click=lambda mbti_type: State.change_answer(0),
-                                color=State.get_color1
+                                on_click=lambda: State.change_answer(0),
+                                bg=State.get_color1
                             ),
                             pc.center(
                                 pc.divider(
@@ -315,8 +318,8 @@ def question():
                             ),
                             pc.button(
                                 State.get_answer_2,
-                                on_click=lambda mbti_type: State.change_answer(1),
-                                color=State.get_color2
+                                on_click=lambda: State.change_answer(1),
+                                bg=State.get_color2
                             )
                         ),
                         pc.hstack(
@@ -348,9 +351,7 @@ def question():
                                 "테스트 진행하기",
                                 on_click=State.load_question
                             ),
-                            pc.center(
-                                pc.link(pc.button("로그인", width="100%"), href="/", width="100%"),
-                            )
+                            login(),
                         )
                     )
                 )
@@ -371,12 +372,12 @@ def result():
             navbar(State),
             pc.center(
                 pc.vstack(
-                    pc.text(State.username+"의 MBTI: "+State.usermbti)
+                    pc.cond(
+                        State.logged_in,
+                        pc.text(State.username+"의 MBTI: "+State.usermbti+"입니다."),
+                        login()
+                    ),
                 ),
-                shadow="lg",
-                padding="1em",
-                border_radius="lg",
-                background="white",
             )
         ),
         padding_top="10em",
