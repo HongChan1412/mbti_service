@@ -29,6 +29,7 @@ class MbtiResult(pc.Model, table=True):
 
 class State(pc.State):
     userid: str = ""
+    target_userid: str = ""
     username_set: str = ""
     username: str = ""
     password: str = ""
@@ -88,10 +89,14 @@ class State(pc.State):
 
     @pc.var
     def user_page(self):
+        self.target_userid = self.get_query_params().get("user")
         with pc.session() as session:
-            exist_user = session.query(User).where(User.userid == self.get_query_params().get("user")).first()
+            exist_user = session.query(User).where(User.userid == self.target_userid).first()
             if exist_user:
-                return self.get_query_params().get("user")
+                if self.userid == self.target_userid:
+                    return "마이페이지"
+                else:
+                    return f"{self.target_userid}의 페이지"
         return "존재하지 않는 아이디입니다"
 
     def load_question(self):
@@ -169,6 +174,10 @@ class State(pc.State):
             session.commit()
         self.mbti_data = {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: "", }
         return pc.redirect("/result")
+
+    def get_mbti(self):
+        with pc.session() as session:
+            exist_result = session.query(MbtiResult).where(MbtiResult.userid == self.userid, MbtiResult.target_userid == self.userid)
 
 
 def home():
@@ -275,6 +284,10 @@ def user():
                         login()
                     ),
                     pc.cond(
+                        State.usermbti,
+                        pc.heading(State.usermbti, font_size="1.52m"),
+                    ),
+                    pc.cond(
                         State.logged_in,
                         pc.button(
                             "테스트 진행하기",
@@ -374,7 +387,7 @@ def result():
                 pc.vstack(
                     pc.cond(
                         State.logged_in,
-                        pc.text(State.username+"의 MBTI: "+State.usermbti+"입니다."),
+                        pc.text(State.username+"의 MBTI: "+State.usermbti),
                         login()
                     ),
                 ),
