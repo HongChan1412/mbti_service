@@ -283,10 +283,10 @@ def user():
                         pc.heading(State.user_page, font_size="1.52m"),
                         login()
                     ),
-                    pc.cond(
-                        State.usermbti,
-                        pc.heading(State.usermbti, font_size="1.52m"),
-                    ),
+                    # pc.cond(
+                    #     State.usermbti,
+                    #     pc.heading(State.usermbti, font_size="1.52m"),
+                    # ),
                     pc.cond(
                         State.logged_in,
                         pc.button(
