@@ -8,7 +8,7 @@ import NextHead from "next/head"
 
 const EVENT = "ws://localhost:8000/event"
 export default function Component() {
-const [state, setState] = useState({"confirm_password": "", "get_answer_1": null, "get_answer_2": null, "get_ask": null, "get_color1": null, "get_color2": null, "logged_in": false, "mbti_data": {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}, "password": "", "question_answer": {"1": "", "2": "", "3": "", "4": "", "5": "", "6": "", "7": "", "8": "", "9": "", "10": "", "11": "", "12": ""}, "question_data": [], "question_data_state": false, "question_idx": 1, "question_progress": 8.333333333333334, "user": "", "user_page": "\uc874\uc7ac\ud558\uc9c0 \uc54a\ub294 \uc544\uc774\ub514\uc785\ub2c8\ub2e4", "userid": "", "usermbti": "", "username": "", "username_set": "", "events": [{"name": "state.hydrate"}]})
+const [state, setState] = useState({"confirm_password": "", "get_answer_1": null, "get_answer_2": null, "get_ask": null, "get_color1": null, "get_color2": null, "logged_in": false, "mbti_data": {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}, "password": "", "question_answer": {"1": "", "2": "", "3": "", "4": "", "5": "", "6": "", "7": "", "8": "", "9": "", "10": "", "11": "", "12": ""}, "question_data": [], "question_data_state": false, "question_idx": 1, "question_progress": 8.333333333333334, "target_user": {}, "target_userid": "", "user": "", "user_page": "", "user_text": "", "userid": "", "usermbti": "", "username": "", "username_set": "", "events": [{"name": "state.hydrate"}]})
 const [result, setResult] = useState({"state": null, "events": [], "processing": false})
 const router = useRouter()
 const socket = useRef(null)
@@ -62,7 +62,7 @@ href="/signup"><Link><MenuItem>{`회원가입`}</MenuItem></Link></NextLink>}</M
 <NextHead><title>{`Pynecone App`}</title>
 <meta name="description"
 content="A Pynecone app."/>
-<meta content="favicon.ico"
-property="og:image"/></NextHead></Center>
+<meta property="og:image"
+content="favicon.ico"/></NextHead></Center>
 )
 }

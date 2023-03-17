@@ -8,7 +8,7 @@ import NextHead from "next/head"
 
 const EVENT = "ws://localhost:8000/event"
 export default function Component() {
-const [state, setState] = useState({"confirm_password": "", "get_answer_1": null, "get_answer_2": null, "get_ask": null, "get_color1": null, "get_color2": null, "logged_in": false, "mbti_data": {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}, "password": "", "question_answer": {"1": "", "2": "", "3": "", "4": "", "5": "", "6": "", "7": "", "8": "", "9": "", "10": "", "11": "", "12": ""}, "question_data": [], "question_data_state": false, "question_idx": 1, "question_progress": 8.333333333333334, "user": "", "user_page": "\uc874\uc7ac\ud558\uc9c0 \uc54a\ub294 \uc544\uc774\ub514\uc785\ub2c8\ub2e4", "userid": "", "usermbti": "", "username": "", "username_set": "", "events": [{"name": "state.hydrate"}]})
+const [state, setState] = useState({"confirm_password": "", "get_answer_1": null, "get_answer_2": null, "get_ask": null, "get_color1": null, "get_color2": null, "logged_in": false, "mbti_data": {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}, "password": "", "question_answer": {"1": "", "2": "", "3": "", "4": "", "5": "", "6": "", "7": "", "8": "", "9": "", "10": "", "11": "", "12": ""}, "question_data": [], "question_data_state": false, "question_idx": 1, "question_progress": 8.333333333333334, "target_user": {}, "target_userid": "", "user": "", "user_page": "", "user_text": "", "userid": "", "usermbti": "", "username": "", "username_set": "", "events": [{"name": "state.hydrate"}]})
 const [result, setResult] = useState({"state": null, "events": [], "processing": false})
 const router = useRouter()
 const socket = useRef(null)
@@ -60,19 +60,19 @@ href="#"><Link onClick={() => Event([E("state.logout", {})])}><MenuItem>{`로그
 href="/signup"><Link><MenuItem>{`회원가입`}</MenuItem></Link></NextLink>}</MenuList></Menu></HStack></Box>
 <Center sx={{"shadow": "lg", "padding": "1em", "borderRadius": "lg", "background": "white"}}><VStack><Heading sx={{"fontSize": "1.5em"}}>{`MBTI 테스트 회원가입`}</Heading>
 <Input type="text"
-placeholder="\uc774\ub984"
+placeholder="Username"
 onBlur={(_e) => Event([E("state.set_username", {username:_e.target.value})])}
 sx={{"width": "100%"}}/>
 <Input type="text"
-placeholder="\uc544\uc774\ub514"
+placeholder="Userid"
 onBlur={(_e) => Event([E("state.set_userid", {userid:_e.target.value})])}
 sx={{"width": "100%"}}/>
 <Input type="password"
-placeholder="\ube44\ubc00\ubc88\ud638"
+placeholder="Password"
 onBlur={(_e) => Event([E("state.set_password", {password:_e.target.value})])}
 sx={{"width": "100%"}}/>
 <Input type="password"
-placeholder="\ube44\ubc00\ubc88\ud638 \uc7ac\ud655\uc778"
+placeholder="Password Confirm"
 onBlur={(_e) => Event([E("state.set_confirm_password", {confirm_password:_e.target.value})])}
 sx={{"width": "100%"}}/>
 <Button onClick={() => Event([E("state.signup", {})])}
@@ -80,7 +80,7 @@ sx={{"width": "100%"}}>{`회원가입`}</Button></VStack></Center></VStack>
 <NextHead><title>{`Pynecone App`}</title>
 <meta name="description"
 content="A Pynecone app."/>
-<meta content="favicon.ico"
-property="og:image"/></NextHead></Box>
+<meta property="og:image"
+content="favicon.ico"/></NextHead></Box>
 )
 }
