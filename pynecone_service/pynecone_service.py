@@ -18,13 +18,13 @@ class Question(pc.Model, table=True):
 
 class MbtiResult(pc.Model, table=True):
     userid: str
-    try_userid: str
+    target_userid: str
     username: str
-    try_username: str
+    target_username: str
     mbti: str
     score: float
     question_result: str
-    try_question: str
+    target_result: str
 
 
 class State(pc.State):
@@ -46,13 +46,17 @@ class State(pc.State):
     usermbti: str = ""
     mbti_data: dict = {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}
 
+    target_user: dict = {}
+    user_text: str = ""
+
     def login(self):
         with pc.session() as session:
             user = session.query(User).where(User.userid == self.userid).first()
             if user and user.password == self.password:
                 self.logged_in = True
                 self.username = user.username
-                return pc.redirect(f"/{self.userid}")
+                # return self.user_page
+                return pc.redirect("/"+self.userid)
             else:
                 return pc.window_alert("아이디, 비밀번호를 확인해주세요")
 
@@ -87,17 +91,43 @@ class State(pc.State):
     def set_confirm_password(self, confirm_password):
         self.confirm_password = confirm_password.strip()
 
+
     @pc.var
     def user_page(self):
         self.target_userid = self.get_query_params().get("user")
+        print(self.target_userid, self.userid)
         with pc.session() as session:
             exist_user = session.query(User).where(User.userid == self.target_userid).first()
             if exist_user:
-                if self.userid == self.target_userid:
-                    return "마이페이지"
+                exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).first()
+                print(exist_result)
+                if exist_result:
+                    exist_answer = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid, MbtiResult.userid == self.userid).first()
+                    if exist_answer:
+                        self.target_user = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result,
+                                            "target_result": exist_answer.target_result}
+                        if self.target_userid == self.userid:
+                            self.user_text = f"{self.target_user['username']}님의 MBTI는 {self.target_user['mbti']}입니다"
+                        else:
+                            self.user_text = f"{self.username}님이 생각하시는 {self.target_user['username']}님의 MBTI는 {self.target_user['mbti']}입니다 정확도는 {self.target_user['score']}입니다"
+                    else:
+                        self.user_text = f"{exist_user.username}님의 MBTI를 맞춰보세요"
                 else:
-                    return f"{self.target_userid}의 페이지"
-        return "존재하지 않는 아이디입니다"
+                    if self.target_userid == self.userid:
+                        self.user_text = f"MBTI 테스트를 진행해주세요"
+                    else:
+                        self.user_text = f"{exist_user.username}님이 MBTI 테스트를 진행하지 않으셨습니다"
+                if self.target_userid == self.userid:
+                    pass
+                    # return "마이페이지"
+                else:
+                    pass
+                    # return f"{exist_user.username}님의 페이지"
+            else:
+                self.user_text = ""
+                # return f"존재하지 않는 아이디입니다"
+
+        return self.user_text
 
     def load_question(self):
         with pc.session() as session:
@@ -272,31 +302,67 @@ def index():
     )
 
 
+# def user():
+#     return pc.box(
+#         pc.vstack(
+#             navbar(State),
+#             pc.center(
+#                 pc.vstack(
+#                     # pc.cond(
+#                     #     State.logged_in,
+#                     #     pc.heading(State.user_page, font_size="1.52m"),
+#                     #     login()
+#                     # ),
+#                     # pc.cond(
+#                     #     State.usermbti,
+#                     #     pc.heading(State.usermbti, font_size="1.52m"),
+#                     # ),
+#                     # pc.cond(
+#                     #     State.logged_in,
+#                     #     pc.button(
+#                     #         "테스트 진행하기",
+#                     #         on_click=State.load_question
+#                     #     ),
+#                     # ),
+#                 ),
+#                 width="100%",
+#             ),
+#         ),
+#         padding_top="10em",
+#         text_align="top",
+#         position="relative",
+#         width="100%",
+#         height="100vh",
+#         background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
+#     )
+
 def user():
     return pc.box(
         pc.vstack(
             navbar(State),
-            pc.center(
-                pc.vstack(
-                    pc.cond(
-                        State.logged_in,
-                        pc.heading(State.user_page, font_size="1.52m"),
-                        login()
-                    ),
-                    # pc.cond(
-                    #     State.usermbti,
-                    #     pc.heading(State.usermbti, font_size="1.52m"),
-                    # ),
-                    pc.cond(
-                        State.logged_in,
-                        pc.button(
-                            "테스트 진행하기",
-                            on_click=State.load_question
-                        ),
-                    ),
+            pc.cond(
+                State.logged_in,
+                pc.center(
+                    pc.vstack(
+                        pc.text(State.user_page),
+                        # pc.heading(State.user_page, font_size="1.52m"),
+                        # pc.cond(
+                        #     State.target_user["score"],
+                        #     pc.text(State.target_user["score"])
+                        # ),
+                        # pc.text(State.user_text)
+                        # pc.cond(
+                        #     State.usermbti,
+                        #     pc.heading(State.usermbti),
+                        #     pc.button(
+                        #         "테스트 진행하기",
+                        #         on_click=State.load_question
+                        #     )
+                        # )
+                    )
                 ),
-                width="100%",
-            ),
+                login()
+            )
         ),
         padding_top="10em",
         text_align="top",
@@ -305,7 +371,6 @@ def user():
         height="100vh",
         background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
     )
-
 
 def question():
     return pc.box(
