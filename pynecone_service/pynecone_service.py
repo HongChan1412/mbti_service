@@ -29,7 +29,6 @@ class MbtiResult(pc.Model, table=True):
 
 class State(pc.State):
     userid: str = ""
-    target_userid: str = ""
     username_set: str = ""
     username: str = ""
     password: str = ""
@@ -46,8 +45,18 @@ class State(pc.State):
     usermbti: str = ""
     mbti_data: dict = {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}
 
-    target_user: dict = {}
+
     user_text: str = ""
+
+    #############################################
+    target_userid: str = ""
+
+    target_user: dict = {}
+    target_data: dict = {}
+
+    exist_user: bool = False
+    exist_result: bool = False
+    exist_answer: bool = False
 
     def login(self):
         with pc.session() as session:
@@ -55,8 +64,9 @@ class State(pc.State):
             if user and user.password == self.password:
                 self.logged_in = True
                 self.username = user.username
-                # return self.user_page
                 return pc.redirect("/"+self.userid)
+                # return pc.redirect(f"/{self.userid}")
+
             else:
                 return pc.window_alert("아이디, 비밀번호를 확인해주세요")
 
@@ -91,43 +101,88 @@ class State(pc.State):
     def set_confirm_password(self, confirm_password):
         self.confirm_password = confirm_password.strip()
 
+    def set_target_userid(self, target_userid):
+        self.target_userid = target_userid.strip()
 
-    @pc.var
-    def user_page(self):
+    def get_target_data(self):
+        pc.redirect("/"+self.target_userid)
+        print(self.target_userid,1)
         self.target_userid = self.get_query_params().get("user")
-        print(self.target_userid, self.userid)
+        print(self.target_userid,2)
+        print(f"get_target_data - self.target_userid: {self.target_userid}")
+        self.target_user = {}
+        self.target_data = {}
+        self.exist_user = False
+        self.exist_result = False
+        self.exist_answer = False
+
         with pc.session() as session:
             exist_user = session.query(User).where(User.userid == self.target_userid).first()
             if exist_user:
-                exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).first()
-                print(exist_result)
+                self.exist_user = True
+                self.target_user = {"target_userid": exist_user.userid, "target_username": exist_user.username}
+                exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).all()
                 if exist_result:
+                    self.exist_result = True
                     exist_answer = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid, MbtiResult.userid == self.userid).first()
                     if exist_answer:
-                        self.target_user = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result,
-                                            "target_result": exist_answer.target_result}
-                        if self.target_userid == self.userid:
-                            self.user_text = f"{self.target_user['username']}님의 MBTI는 {self.target_user['mbti']}입니다"
-                        else:
-                            self.user_text = f"{self.username}님이 생각하시는 {self.target_user['username']}님의 MBTI는 {self.target_user['mbti']}입니다 정확도는 {self.target_user['score']}입니다"
-                    else:
-                        self.user_text = f"{exist_user.username}님의 MBTI를 맞춰보세요"
-                else:
-                    if self.target_userid == self.userid:
-                        self.user_text = f"MBTI 테스트를 진행해주세요"
-                    else:
-                        self.user_text = f"{exist_user.username}님이 MBTI 테스트를 진행하지 않으셨습니다"
-                if self.target_userid == self.userid:
-                    pass
-                    # return "마이페이지"
-                else:
-                    pass
-                    # return f"{exist_user.username}님의 페이지"
-            else:
-                self.user_text = ""
-                # return f"존재하지 않는 아이디입니다"
+                        self.exist_answer = True
+                        self.target_data = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result, "target_result": exist_answer.target_result}
 
-        return self.user_text
+        #             # print(f"exist_result: {exist_result}")
+        #             # print(f"exist_reuslt_type: {type(exist_result)}")
+        #             # print(f"exist_result[0]: {exist_result[0]}")
+        #             # print(f"exist_result[0]_type: {type(exist_result[0])}")
+        #             # ret = next((item for item in exist_result if item.userid == self.userid), None)[0]
+        #             # ret = (next(item for item in exist_result if item.userid == self.userid), None)[0]
+        #             # if ret:
+        #             #     self.target_data = {"userid": ret.userid, "target_userid": ret.target_userid, "username": ret.username, "target_username": ret.target_username, "mbti": ret.mbti, "score": ret.score, "question_result": ret.question_result, "target_result": ret.target_result}
+        #             # else:
+        #             #     self.target_data = {}
+        #         else:
+        #             self.target_data = {}
+        #     else:
+        #         self.target_data = {}
+        #
+        # # print(self.target_data)
+
+    # @pc.var
+    # def user_page(self):
+    #     self.target_userid = self.get_query_params().get("user")
+    #     with pc.session() as session:
+    #         exist_user = session.query(User).where(User.userid == self.target_userid).first()
+    #         if exist_user:
+    #             exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).first()
+    #             if exist_result:
+    #                 exist_answer = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid, MbtiResult.userid == self.userid).first()
+    #                 if exist_answer:
+    #                     self.target_user = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result,
+    #                                         "target_result": exist_answer.target_result}
+    #                     if self.target_userid == self.userid:
+    #                         self.user_text = f"{self.target_user['username']}님의 MBTI는 {self.target_user['mbti']}입니다"
+    #                     else:
+    #                         self.user_text = f"{self.username}님이 생각하시는 {self.target_user['username']}님의 MBTI는 {self.target_user['mbti']}입니다 정확도는 {self.target_user['score']}입니다"
+    #                 else:
+    #                     self.target_user = {}
+    #                     self.user_text = f"{exist_user.username}님의 MBTI를 맞춰보세요"
+    #             else:
+    #                 self.target_user = {}
+    #                 if self.target_userid == self.userid:
+    #                     self.user_text = f"MBTI 테스트를 진행해주세요"
+    #                 else:
+    #                     self.user_text = f"{exist_user.username}님이 MBTI 테스트를 진행하지 않으셨습니다"
+    #         else:
+    #             self.target_user = {}
+    #             self.user_text = f"{self.target_userid}는 존재하지 않는 아이디입니다"
+    #
+    #     print(self.target_user)
+        # return self.user_text
+
+    # def move_page(self):
+    #     print(f"target_id: {self.target_id}")
+    #     self.target_userid = self.target_id
+    #     return pc.redirect("/" + self.target_userid)
+
 
     def load_question(self):
         with pc.session() as session:
@@ -205,10 +260,12 @@ class State(pc.State):
         self.mbti_data = {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: "", }
         return pc.redirect("/result")
 
-    def get_mbti(self):
-        with pc.session() as session:
-            exist_result = session.query(MbtiResult).where(MbtiResult.userid == self.userid, MbtiResult.target_userid == self.userid)
-
+    @pc.var
+    def get_target_username(self):
+        print(f"get_target_username - self.target_userid: {self.target_userid}")
+        if self.target_user:
+            print(f"get_target_username - self.target_user['target_username']: {self.target_user['target_username']}")
+            return self.target_user["target_username"]
 
 def home():
     return pc.center(
@@ -344,7 +401,26 @@ def user():
                 State.logged_in,
                 pc.center(
                     pc.vstack(
-                        pc.text(State.user_page),
+                        pc.cond(
+                            State.exist_user,
+                            pc.heading(State.get_target_username+"님의 페이지"),
+                            pc.heading("존재하지 않는 userid"),
+                        ),
+                        pc.input(on_blur=State.set_target_userid, placeholder="Userid", width="100%"),
+                        pc.link(pc.button("친구 페이지로 이동하기1", width="100%"), href="/"+State.target_userid, width="100%"),
+                        pc.button("친구 페이지로 이동하기2", on_click=State.get_target_data, width="100%")
+                        # ),
+                        # pc.text(State.user_text),
+                        # # pc.text(State.user_page),
+                        # pc.input(on_blur=State.set_targetuserid, placeholder="Userid", width="100%"),
+                        # pc.button("친구 페이지로 이동하기1", on_click=State.move_page, width="100%"),
+                        # pc.link(pc.button("친구 페이지로 이동하기2", width="100%"), href="/"+State.target_id, width="100%"),
+                        # pc.button(on_click=lambda: State.move_page(State.target_id))
+                    ),
+                    shadow="lg",
+                    padding="1em",
+                    border_radius="lg",
+                    background="white",
                         # pc.heading(State.user_page, font_size="1.52m"),
                         # pc.cond(
                         #     State.target_user["score"],
@@ -359,7 +435,6 @@ def user():
                         #         on_click=State.load_question
                         #     )
                         # )
-                    )
                 ),
                 login()
             )
@@ -471,7 +546,7 @@ app = pc.App(state=State)
 app.add_page(index, title="MBTI Demo",)
 app.add_page(signup)
 app.add_page(home)
-app.add_page(user, route="/[user]")
+app.add_page(user, route="/[user]", on_load=State.get_target_data)
 app.add_page(question)
 app.add_page(result)
 # app.add_page(question, route="/question/[user]")
