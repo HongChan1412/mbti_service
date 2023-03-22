@@ -105,7 +105,6 @@ class State(pc.State):
         self.target_userid = target_userid.strip()
 
     def get_target_data(self):
-        pc.redirect("/"+self.target_userid)
         print(self.target_userid,1)
         self.target_userid = self.get_query_params().get("user")
         print(self.target_userid,2)
@@ -408,7 +407,8 @@ def user():
                         ),
                         pc.input(on_blur=State.set_target_userid, placeholder="Userid", width="100%"),
                         pc.link(pc.button("친구 페이지로 이동하기1", width="100%"), href="/"+State.target_userid, width="100%"),
-                        pc.button("친구 페이지로 이동하기2", on_click=State.get_target_data, width="100%")
+                        pc.button("친구 페이지로 이동하기2", on_click=State.get_target_data, width="100%"),
+                        pc.button(State.target_userid+"님의 MBTI맞추러 가기", on_click=State.load_question, width="100%")
                         # ),
                         # pc.text(State.user_text),
                         # # pc.text(State.user_page),
