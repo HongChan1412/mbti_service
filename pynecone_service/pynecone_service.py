@@ -50,7 +50,7 @@ class State(pc.State):
 
     #############################################
     target_userid: str = ""
-
+    target_userid_set: str = ""
     target_user: dict = {}
     target_data: dict = {}
 
@@ -102,13 +102,14 @@ class State(pc.State):
         self.confirm_password = confirm_password.strip()
 
     def set_target_userid(self, target_userid):
-        self.target_userid = target_userid.strip()
+        self.target_userid_set = target_userid.strip()
 
     def get_target_data(self):
-        print(self.target_userid,1)
-        self.target_userid = self.get_query_params().get("user")
-        print(self.target_userid,2)
-        print(f"get_target_data - self.target_userid: {self.target_userid}")
+        if not self.target_userid_set:
+            self.target_userid = self.get_query_params().get("user")
+        else:
+            self.target_userid = self.target_userid_set
+            self.target_userid_set = ""
         self.target_user = {}
         self.target_data = {}
         self.exist_user = False
@@ -127,6 +128,10 @@ class State(pc.State):
                     if exist_answer:
                         self.exist_answer = True
                         self.target_data = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result, "target_result": exist_answer.target_result}
+
+        return pc.redirect("/"+self.target_userid)
+
+
 
         #             # print(f"exist_result: {exist_result}")
         #             # print(f"exist_reuslt_type: {type(exist_result)}")
@@ -261,9 +266,7 @@ class State(pc.State):
 
     @pc.var
     def get_target_username(self):
-        print(f"get_target_username - self.target_userid: {self.target_userid}")
         if self.target_user:
-            print(f"get_target_username - self.target_user['target_username']: {self.target_user['target_username']}")
             return self.target_user["target_username"]
 
 def home():
