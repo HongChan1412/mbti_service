@@ -54,10 +54,11 @@ class State(pc.State):
     target_user: dict = {}
     target_data: dict = {"user": {"userid": "", "username": ""}, "info": {"userid": "", "target_userid": "", "username": "", "target_username": "", "mbti": "", "score": "", "question_result": "", "target_result": ""}}
 
-
     exist_user: bool = False
     exist_result: bool = False
     exist_answer: bool = False
+
+    # results: list[MbtiResult] = []
 
     def login(self):
         with pc.session() as session:
@@ -66,7 +67,7 @@ class State(pc.State):
                 self.logged_in = True
                 self.username = user.username
                 return self.load_user(True)
-                return pc.redirect("/"+self.userid)
+                # return pc.redirect("/"+self.userid)
 
             else:
                 return pc.window_alert("아이디, 비밀번호를 확인해주세요")
@@ -301,6 +302,14 @@ class State(pc.State):
     def get_target_mbti(self):
         return self.target_data["info"]["mbti"]
 
+    # @pc.var
+    # def get_results(self) -> list[MbtiResult]:
+    #     with pc.session() as session:
+    #         self.results = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).all()
+    #         return self.results
+
+
+
 def home():
     return pc.center(
         navbar(State),
@@ -415,6 +424,19 @@ def user():
                                                 pc.button(State.get_target_username + "님의 MBTI 테스트 다시하기", on_click=State.load_question, width="100%"),
                                             ),
                                             pc.button(State.get_target_username + "님의 MBTI 테스트하기", on_click=State.load_question, width="100%"),
+                                        ),
+                                        pc.table_container(
+                                            pc.table(
+                                                pc.table_caption("Table"),
+                                                pc.thead(
+                                                    pc.tr(
+                                                        pc.th("username"),
+                                                        pc.th("mbtiresult"),
+                                                        pc.th("score")
+                                                    )
+                                                ),
+                                                # pc.tbody(pc.foreach(State.get_results, show_result))
+                                            )
                                         )
                                     ),
                                     pc.text(State.get_target_username + "님이 MBTI 테스트를 진행하지 않으셨습니다")
@@ -426,9 +448,7 @@ def user():
                             pc.input(on_blur=State.set_target_userid, placeholder="Userid", width="100%"),
                             pc.button("친구 페이지로 이동하기", on_click=lambda: State.load_user(False), width="100%"),
                         ),
-                        pc.button("마이페이지로 이동하기", on_click=lambda: State.load_user(True), width="100%"),
-                        # pc.button("마이페이지로 이동하기1", on_click=lambda: State.load_mypage, width="100%"),
-                        # pc.link(pc.button("마이페이지로 이동하기2", width="100%"), href="/" + State.userid, width="100%"),
+                        pc.button("마이페이지로 이동하기", on_click=lambda: State.load_user(True), width="100%")
                     ),
                     shadow="lg",
                     padding="1em",
@@ -539,6 +559,14 @@ def result():
         height="100vh",
         background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
     )
+
+
+# def show_result(res: MbtiResult):
+#     return pc.tr(
+#         pc.td(res.username),
+#         pc.td(res.mbti),
+#         pc.td(res.score)
+#     )
 
 
 app = pc.App(state=State)
