@@ -50,15 +50,17 @@ class State(pc.State):
 
     #############################################
     target_userid: str = ""
-    target_userid_set: str = ""
-    target_user: dict = {}
-    target_data: dict = {"user": {"userid": "", "username": ""}, "info": {"userid": "", "target_userid": "", "username": "", "target_username": "", "mbti": "", "score": "", "question_result": "", "target_result": ""}}
+
+    target_data: dict = {"user": {"userid": "", "username": ""}, "info": {"userid": "", "target_userid": "", "username": "", "target_username": "", "mbti": "", "score": "", "question_result": "", "target_result": ""}, "results": []}
+    # target_results: list = []
+    # target_results2: list = []
 
     exist_user: bool = False
     exist_result: bool = False
     exist_answer: bool = False
 
     # results: list[MbtiResult] = []
+
 
     def login(self):
         with pc.session() as session:
@@ -113,10 +115,12 @@ class State(pc.State):
             if not self.target_userid:
                 self.target_userid = self.get_query_params().get("user")
 
-        self.target_data = {"user": {"userid": self.target_userid, "username": ""}, "info": {"userid": "", "target_userid": "", "username": "", "target_username": "", "mbti": "", "score": "", "question_result": "", "target_result": ""}}
+        self.target_data = {"user": {"userid": self.target_userid, "username": ""}, "info": {"userid": "", "target_userid": "", "username": "", "target_username": "", "mbti": "", "score": "", "question_result": "", "target_result": ""}, "results": []}
         self.exist_user = False
         self.exist_result = False
         self.exist_answer = False
+        # self.target_results = []
+
 
         with pc.session() as session:
             exist_user = session.query(User).where(User.userid == self.target_userid).first()
@@ -126,96 +130,15 @@ class State(pc.State):
                 exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).all()
                 if exist_result:
                     self.exist_result = True
+                    self.target_data["results"] = [[i.username, i.mbti, i.score] for i in exist_result]
+                    # self.target_results = [[i.username, i.mbti, i.score] for i in exist_result]
+                    # self.target_results = exist_result
                     exist_answer = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid, MbtiResult.userid == self.userid).first()
                     if exist_answer:
                         self.exist_answer = True
                         self.target_data["info"] = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result, "target_result": exist_answer.target_result}
         self.target_userid = ""
         return pc.redirect("/" + self.target_data["user"]["userid"])
-
-
-    # def get_target_data(self):
-    #     if not self.target_userid_set:
-    #         self.target_userid = self.get_query_params().get("user")
-    #     else:
-    #         self.target_userid = self.target_userid_set
-    #         self.target_userid_set = ""
-    #     self.target_user = {}
-    #     self.target_data = {}
-    #     self.exist_user = False
-    #     self.exist_result = False
-    #     self.exist_answer = False
-    #
-    #     with pc.session() as session:
-    #         exist_user = session.query(User).where(User.userid == self.target_userid).first()
-    #         if exist_user:
-    #             self.exist_user = True
-    #             self.target_user = {"target_userid": exist_user.userid, "target_username": exist_user.username}
-    #             exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).all()
-    #             if exist_result:
-    #                 self.exist_result = True
-    #                 exist_answer = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid, MbtiResult.userid == self.userid).first()
-    #                 if exist_answer:
-    #                     self.exist_answer = True
-    #                     self.target_data = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result, "target_result": exist_answer.target_result}
-    #
-    #     return pc.redirect("/"+self.target_userid)
-
-
-
-        #             # print(f"exist_result: {exist_result}")
-        #             # print(f"exist_reuslt_type: {type(exist_result)}")
-        #             # print(f"exist_result[0]: {exist_result[0]}")
-        #             # print(f"exist_result[0]_type: {type(exist_result[0])}")
-        #             # ret = next((item for item in exist_result if item.userid == self.userid), None)[0]
-        #             # ret = (next(item for item in exist_result if item.userid == self.userid), None)[0]
-        #             # if ret:
-        #             #     self.target_data = {"userid": ret.userid, "target_userid": ret.target_userid, "username": ret.username, "target_username": ret.target_username, "mbti": ret.mbti, "score": ret.score, "question_result": ret.question_result, "target_result": ret.target_result}
-        #             # else:
-        #             #     self.target_data = {}
-        #         else:
-        #             self.target_data = {}
-        #     else:
-        #         self.target_data = {}
-        #
-        # # print(self.target_data)
-
-    # @pc.var
-    # def user_page(self):
-    #     self.target_userid = self.get_query_params().get("user")
-    #     with pc.session() as session:
-    #         exist_user = session.query(User).where(User.userid == self.target_userid).first()
-    #         if exist_user:
-    #             exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).first()
-    #             if exist_result:
-    #                 exist_answer = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid, MbtiResult.userid == self.userid).first()
-    #                 if exist_answer:
-    #                     self.target_user = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result,
-    #                                         "target_result": exist_answer.target_result}
-    #                     if self.target_userid == self.userid:
-    #                         self.user_text = f"{self.target_user['username']}님의 MBTI는 {self.target_user['mbti']}입니다"
-    #                     else:
-    #                         self.user_text = f"{self.username}님이 생각하시는 {self.target_user['username']}님의 MBTI는 {self.target_user['mbti']}입니다 정확도는 {self.target_user['score']}입니다"
-    #                 else:
-    #                     self.target_user = {}
-    #                     self.user_text = f"{exist_user.username}님의 MBTI를 맞춰보세요"
-    #             else:
-    #                 self.target_user = {}
-    #                 if self.target_userid == self.userid:
-    #                     self.user_text = f"MBTI 테스트를 진행해주세요"
-    #                 else:
-    #                     self.user_text = f"{exist_user.username}님이 MBTI 테스트를 진행하지 않으셨습니다"
-    #         else:
-    #             self.target_user = {}
-    #             self.user_text = f"{self.target_userid}는 존재하지 않는 아이디입니다"
-    #
-    #     print(self.target_user)
-        # return self.user_text
-
-    # def move_page(self):
-    #     print(f"target_id: {self.target_id}")
-    #     self.target_userid = self.target_id
-    #     return pc.redirect("/" + self.target_userid)
 
 
     def load_question(self):
@@ -302,11 +225,20 @@ class State(pc.State):
     def get_target_mbti(self):
         return self.target_data["info"]["mbti"]
 
+    @pc.var
+    def get_target_results(self) -> list:
+        return self.target_data["results"]
     # @pc.var
-    # def get_results(self) -> list[MbtiResult]:
+    # def get_target_results2(self) -> list:
     #     with pc.session() as session:
-    #         self.results = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).all()
-    #         return self.results
+    #         self.target_results2 = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).all()
+    #         print(self.target_results2)
+    #         return self.target_results2
+
+    # @pc.var
+    # def get_target_results3(self):
+    #     return self.target_results
+
 
 
 
@@ -425,17 +357,54 @@ def user():
                                             ),
                                             pc.button(State.get_target_username + "님의 MBTI 테스트하기", on_click=State.load_question, width="100%"),
                                         ),
+                                        pc.table(
+                                            pc.thead(
+                                                pc.tr(
+                                                    pc.th("username"),
+                                                    pc.th("mbtiresult"),
+                                                    pc.th("score")
+                                                )
+                                            ),
+                                            pc.tbody(pc.foreach(State.get_target_results, show_results))
+
+                                            # pc.tbody(
+                                            #     pc.foreach(
+                                            #         State.get_target_results,
+                                            #         lambda item: pc.tr(
+                                            #             pc.td(item),
+                                            #             pc.td(item),
+                                            #             pc.td(item)
+                                            #         )
+                                            #     )
+                                            # )
+                                        ),
                                         pc.table_container(
                                             pc.table(
-                                                pc.table_caption("Table"),
-                                                pc.thead(
-                                                    pc.tr(
-                                                        pc.th("username"),
-                                                        pc.th("mbtiresult"),
-                                                        pc.th("score")
-                                                    )
-                                                ),
-                                                # pc.tbody(pc.foreach(State.get_results, show_result))
+                                                # pc.table_caption("Table"),
+                                                headers=["username", "mbtiresult", "score"],
+                                                # rows=State.target_results
+                                                # rows=[("a","b","c")],
+                                                # rows=State.get_target_results
+                                                rows=[]
+                                                # rows=State.target_results
+                                                # pc.thead(
+                                                #     pc.tr(
+                                                #         pc.th("username"),
+                                                #         pc.th("mbtiresult"),
+                                                #         pc.th("score")
+                                                #     )
+                                                # ),
+                                                # pc.tbody(
+                                                #     # *[
+                                                #     #     pc.tr(*[pc.td(item) for item in row])
+                                                #     #     for row in State.get_results
+                                                #     # ]
+                                                #     *[
+                                                #         pc.tr(*[pc.td(item) for item in row])
+                                                #         for row in State.target_data["results"]
+                                                #     ]
+                                                # )
+                                                # # pc.tbody(pc.foreach(State.get_results, show_result))
                                             )
                                         )
                                     ),
@@ -560,12 +529,21 @@ def result():
         background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
     )
 
+def show_results(item):
+    return pc.foreach(
+        item,
+        lambda item2: pc.tr(
+            pc.td(item2[0]),
+            pc.td(item2[1]),
+            pc.td(item2[2])
+        )
+    )
 
-# def show_result(res: MbtiResult):
+# def show_results(item):
 #     return pc.tr(
-#         pc.td(res.username),
-#         pc.td(res.mbti),
-#         pc.td(res.score)
+#         pc.td(item[0]),
+#         pc.td(item[1]),
+#         pc.td(item[2])
 #     )
 
 
