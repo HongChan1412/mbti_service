@@ -1,6 +1,7 @@
 import pynecone as pc
 from .helpers import navbar
-
+from typing import List
+import os
 
 class User(pc.Model, table=True):
     username: str
@@ -24,7 +25,6 @@ class MbtiResult(pc.Model, table=True):
     mbti: str
     score: float
     question_result: str
-    target_result: str
 
 
 class State(pc.State):
@@ -36,30 +36,25 @@ class State(pc.State):
     logged_in: bool = False
 
     question_idx: int = 1
-    question_progress: float = 100 / 12 * question_idx
+    question_progress: float = round(100 / 12 * question_idx, 2)
 
-    question_answer: dict = {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: "", }
+    question_answer: dict = {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: ""}
     question_data: list = []
-    question_data_state: bool = False
 
     usermbti: str = ""
     mbti_data: dict = {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}
 
 
-    user_text: str = ""
 
     #############################################
     target_userid: str = ""
-
-    target_data: dict = {"user": {"userid": "", "username": ""}, "info": {"userid": "", "target_userid": "", "username": "", "target_username": "", "mbti": "", "score": "", "question_result": "", "target_result": ""}, "results": []}
-    # target_results: list = []
-    # target_results2: list = []
+    target_data: dict = {"user": {"userid": "", "username": "", "target_userid": "", "target_username": ""}, "info": {"mbti": "", "score": 0.0, "question_result": {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: ""}}}
 
     exist_user: bool = False
     exist_result: bool = False
     exist_answer: bool = False
 
-    # results: list[MbtiResult] = []
+    target_results: List[MbtiResult] = []
 
 
     def login(self):
@@ -69,7 +64,6 @@ class State(pc.State):
                 self.logged_in = True
                 self.username = user.username
                 return self.load_user(True)
-                # return pc.redirect("/"+self.userid)
 
             else:
                 return pc.window_alert("아이디, 비밀번호를 확인해주세요")
@@ -115,11 +109,11 @@ class State(pc.State):
             if not self.target_userid:
                 self.target_userid = self.get_query_params().get("user")
 
-        self.target_data = {"user": {"userid": self.target_userid, "username": ""}, "info": {"userid": "", "target_userid": "", "username": "", "target_username": "", "mbti": "", "score": "", "question_result": "", "target_result": ""}, "results": []}
+        self.target_data = {"user": {"userid": "", "username": "", "target_userid": "", "target_username": ""}, "info": {"mbti": "", "score": 0.0, "question_result": {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: ""}}}
         self.exist_user = False
         self.exist_result = False
         self.exist_answer = False
-        # self.target_results = []
+        self.target_results = []
 
 
         with pc.session() as session:
@@ -127,37 +121,35 @@ class State(pc.State):
             if exist_user:
                 self.exist_user = True
                 self.target_data["user"] = {"userid": exist_user.userid, "username": exist_user.username}
-                exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).all()
+                exist_result = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid, MbtiResult.userid != self.target_userid).all()
                 if exist_result:
                     self.exist_result = True
-                    self.target_data["results"] = [[i.username, i.mbti, i.score] for i in exist_result]
-                    # self.target_results = [[i.username, i.mbti, i.score] for i in exist_result]
-                    # self.target_results = exist_result
+                    self.target_results = exist_result
                     exist_answer = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid, MbtiResult.userid == self.userid).first()
                     if exist_answer:
                         self.exist_answer = True
-                        self.target_data["info"] = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username, "mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": exist_answer.question_result, "target_result": exist_answer.target_result}
+                        self.target_data["user"] = {"userid": exist_answer.userid, "target_userid": exist_answer.target_userid, "username": exist_answer.username, "target_username": exist_answer.target_username}
+                        self.target_data["info"] = {"mbti": exist_answer.mbti, "score": exist_answer.score, "question_result": eval(exist_answer.question_result)}
         self.target_userid = ""
         return pc.redirect("/" + self.target_data["user"]["userid"])
-
 
     def load_question(self):
         with pc.session() as session:
             self.question_data = session.query(Question).all()
-            self.question_data_state = True
             return pc.redirect("/question")
+
 
     def next_question(self):
         if self.question_idx == 12:
             return self.get_result()
         self.question_idx += 1
-        self.question_progress = 100 / 12 * self.question_idx
+        self.question_progress = round(100 / 12 * self.question_idx, 2)
 
     def prev_question(self):
         if self.question_idx == 1:
             return pc.redirect(f"/{self.userid}")
         self.question_idx -= 1
-        self.question_progress = 100 / 12 * self.question_idx
+        self.question_progress = round(100 / 12 * self.question_idx, 2)
 
     @pc.var
     def get_ask(self):
@@ -176,46 +168,57 @@ class State(pc.State):
 
     @pc.var
     def get_color1(self):
-        if self.question_answer[self.question_idx] in ["E", "S", "T", "J"]:
+        if self.target_data["info"]["question_result"][self.question_idx] in ["E", "S", "T", "J"]:
             return "rgb(29 161 242)"
 
     @pc.var
     def get_color2(self):
-        if self.question_answer[self.question_idx] in ["I", "N", "F", "P"]:
+        if self.target_data["info"]["question_result"][self.question_idx] in ["I", "N", "F", "P"]:
             return "rgb(29 161 242)"
 
     def change_answer(self, question_answer):
-        self.question_answer[self.question_idx] = self.question_data[(self.question_idx - 1) * 2 + question_answer].mbti_type
+        self.target_data["info"]["question_result"][self.question_idx] = self.question_data[(self.question_idx - 1) * 2 + question_answer].mbti_type
 
         if self.question_idx == 12:
             return self.get_result()
         self.question_idx += 1
-        self.question_progress = 100 / 12 * self.question_idx
+        self.question_progress = round(100 / 12 * self.question_idx)
 
     def get_result(self):
-        for k, v in self.question_answer.items():
+        users = self.target_data["user"]
+        info = self.target_data["info"]
+        info["mbti"], info["score"] = "", 0.0
+        for k, v in info["question_result"].items():
             if not v:
                 return pc.window_alert(f"{k}번 질문의 답변을 확인해주세요")
             self.mbti_data[v] += 1
-        if self.mbti_data["E"] > self.mbti_data["I"]: self.usermbti += "E"
-        else: self.usermbti += "I"
-        if self.mbti_data["S"] > self.mbti_data["N"]: self.usermbti += "S"
-        else: self.usermbti += "N"
-        if self.mbti_data["T"] > self.mbti_data["F"]: self.usermbti += "T"
-        else: self.usermbti += "F"
-        if self.mbti_data["J"] > self.mbti_data["P"]: self.usermbti += "J"
-        else: self.usermbti += "P"
+            print(f'info["question_result"]: {info["question_result"]}')
+            print(f'self.mbti_data: {self.mbti_data}')
+        if self.mbti_data["E"] > self.mbti_data["I"]: info["mbti"] += "E"
+        else: info["mbti"] += "I"
+        if self.mbti_data["S"] > self.mbti_data["N"]: info["mbti"] += "S"
+        else: info["mbti"] += "N"
+        if self.mbti_data["T"] > self.mbti_data["F"]: info["mbti"] += "T"
+        else: info["mbti"] += "F"
+        if self.mbti_data["J"] > self.mbti_data["P"]: info["mbti"] += "J"
+        else: info["mbti"] += "P"
 
         with pc.session() as session:
-            exist_result = session.query(MbtiResult).where(MbtiResult.userid == self.userid, MbtiResult.target_userid == self.target_userid)
-            if exist_result:
-                session.query(MbtiResult).where(MbtiResult.userid == self.userid, MbtiResult.target_userid == self.target_userid).update({"userid": self.userid, "try_userid": self.userid, "username": self.username, "try_username": self.username, "mbti": self.usermbti, "score": 100.0, "question_result": str(self.question_answer), "try_question": str(self.question_answer)})
+            target_answer = session.query(MbtiResult).where(MbtiResult.userid == users["target_userid"], MbtiResult.target_userid == users["target_userid"]).first()
+            for num, i in enumerate(eval(target_answer.question_result).items()):
+                if info["question_result"][num+1] == i[1]:
+                    info["score"] += 100 / 12
+            if self.exist_answer:
+                session.query(MbtiResult).where(MbtiResult.userid == self.userid, MbtiResult.target_userid == users["target_userid"]).update({"userid": self.userid, "target_userid": users["target_userid"], "username": users["username"], "target_username": users["target_username"], "mbti": info["mbti"], "score": round(info["score"], 2), "question_result": str(info["question_result"])})
             else:
-                result = MbtiResult(userid=self.userid, target_userid=self.target_userid, username=self.username, target_username=self.username, mbti=self.usermbti, score=100.0, question_result=str(self.question_answer), try_question=str(self.question_answer))
-                session.add(result)
+                session.add(MbtiResult(userid=self.userid, target_userid=users["target_userid"], username=users["username"], target_name=users["target_username"], mbti=info["mbti"], score=round(info["score"], 2), question_result=str(info["question_result"])))
             session.commit()
-        self.mbti_data = {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: "", }
+
+        self.question_idx = 1
+        self.question_progress = round(100 / 12 * self.question_idx, 2)
+        self.mbti_data = {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}
         return pc.redirect("/result")
+
 
     @pc.var
     def get_target_username(self):
@@ -224,22 +227,6 @@ class State(pc.State):
     @pc.var
     def get_target_mbti(self):
         return self.target_data["info"]["mbti"]
-
-    @pc.var
-    def get_target_results(self) -> list:
-        return self.target_data["results"]
-    # @pc.var
-    # def get_target_results2(self) -> list:
-    #     with pc.session() as session:
-    #         self.target_results2 = session.query(MbtiResult).where(MbtiResult.target_userid == self.target_userid).all()
-    #         print(self.target_results2)
-    #         return self.target_results2
-
-    # @pc.var
-    # def get_target_results3(self):
-    #     return self.target_results
-
-
 
 
 def home():
@@ -357,55 +344,21 @@ def user():
                                             ),
                                             pc.button(State.get_target_username + "님의 MBTI 테스트하기", on_click=State.load_question, width="100%"),
                                         ),
-                                        pc.table(
-                                            pc.thead(
-                                                pc.tr(
-                                                    pc.th("username"),
-                                                    pc.th("mbtiresult"),
-                                                    pc.th("score")
-                                                )
-                                            ),
-                                            pc.tbody(pc.foreach(State.get_target_results, show_results))
-
-                                            # pc.tbody(
-                                            #     pc.foreach(
-                                            #         State.get_target_results,
-                                            #         lambda item: pc.tr(
-                                            #             pc.td(item),
-                                            #             pc.td(item),
-                                            #             pc.td(item)
-                                            #         )
-                                            #     )
-                                            # )
-                                        ),
                                         pc.table_container(
                                             pc.table(
-                                                # pc.table_caption("Table"),
-                                                headers=["username", "mbtiresult", "score"],
-                                                # rows=State.target_results
-                                                # rows=[("a","b","c")],
-                                                # rows=State.get_target_results
-                                                rows=[]
-                                                # rows=State.target_results
-                                                # pc.thead(
-                                                #     pc.tr(
-                                                #         pc.th("username"),
-                                                #         pc.th("mbtiresult"),
-                                                #         pc.th("score")
-                                                #     )
-                                                # ),
-                                                # pc.tbody(
-                                                #     # *[
-                                                #     #     pc.tr(*[pc.td(item) for item in row])
-                                                #     #     for row in State.get_results
-                                                #     # ]
-                                                #     *[
-                                                #         pc.tr(*[pc.td(item) for item in row])
-                                                #         for row in State.target_data["results"]
-                                                #     ]
-                                                # )
-                                                # # pc.tbody(pc.foreach(State.get_results, show_result))
-                                            )
+                                                pc.thead(
+                                                    pc.tr(
+                                                        pc.th("username"),
+                                                        pc.th("mbtiresult"),
+                                                        pc.th("score")
+                                                    )
+                                                ),
+                                                pc.tbody(
+                                                    pc.foreach(
+                                                        State.target_results, show_results
+                                                    )
+                                                )
+                                            ),
                                         )
                                     ),
                                     pc.text(State.get_target_username + "님이 MBTI 테스트를 진행하지 않으셨습니다")
@@ -440,10 +393,10 @@ def question():
         pc.vstack(
             navbar(State),
             pc.cond(
-                State.question_data_state,
-                pc.container(
+                State.logged_in,
+                pc.box(
                     pc.vstack(
-                        pc.heading("질문"+State.question_idx),
+                        pc.heading("질문" + State.question_idx),
                         pc.text(State.get_ask),
                         pc.hstack(
                             pc.button(
@@ -484,19 +437,8 @@ def question():
                     border_radius="lg",
                     background="white",
                 ),
-                pc.center(
-                    pc.vstack(
-                        pc.cond(
-                            State.logged_in,
-                            pc.button(
-                                "테스트 진행하기",
-                                on_click=State.load_question
-                            ),
-                            login(),
-                        )
-                    )
-                )
-            )
+                login()
+            ),
         ),
         padding_top="10em",
         text_align="top",
@@ -529,22 +471,12 @@ def result():
         background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
     )
 
-def show_results(item):
-    return pc.foreach(
-        item,
-        lambda item2: pc.tr(
-            pc.td(item2[0]),
-            pc.td(item2[1]),
-            pc.td(item2[2])
-        )
+def show_results(results: MbtiResult):
+    return pc.tr(
+        pc.td(results.username),
+        pc.td(results.mbti),
+        pc.td(results.score)
     )
-
-# def show_results(item):
-#     return pc.tr(
-#         pc.td(item[0]),
-#         pc.td(item[1]),
-#         pc.td(item[2])
-#     )
 
 
 app = pc.App(state=State)
@@ -552,7 +484,6 @@ app.add_page(index, title="MBTI 테스트")
 app.add_page(signup, title="MBTI 테스트")
 app.add_page(home)
 app.add_page(user, title="MBTI 테스트", route="/[user]", on_load=State.load_user)
-app.add_page(question, title="MBTI 테스트")
+app.add_page(question, title="MBTI 테스트", on_load=State.load_question)
 app.add_page(result, title="MBTI 테스트")
-# app.add_page(question, route="/question/[user]")
 app.compile()
