@@ -1,6 +1,7 @@
 import pynecone as pc
 from .helpers import navbar
 from typing import List
+import bcrypt
 import os
 
 class User(pc.Model, table=True):
@@ -44,7 +45,8 @@ class State(pc.State):
     usermbti: str = ""
     mbti_data: dict = {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}
 
-
+    alert_password: bool = True
+    alert_confirm_password: bool = True
 
     #############################################
     target_userid: str = ""
@@ -60,11 +62,10 @@ class State(pc.State):
     def login(self):
         with pc.session() as session:
             user = session.query(User).where(User.userid == self.userid).first()
-            if user and user.password == self.password:
+            if user and bcrypt.checkpw(self.password.encode('utf-8'), user.password.encode('utf-8')):
                 self.logged_in = True
                 self.username = user.username
                 return self.load_user(True)
-
             else:
                 return pc.window_alert("아이디, 비밀번호를 확인해주세요")
 
@@ -80,7 +81,8 @@ class State(pc.State):
             if exist_user:
                 return pc.window_alert("이미 존재하는 아이디입니다")
             if self.password == self.confirm_password:
-                user = User(userid=self.userid, password=self.password, username=self.username_set)
+                password = bcrypt.hashpw(self.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                user = User(userid=self.userid, password=password, username=self.username_set)
                 session.add(user)
                 session.commit()
             else:
@@ -95,9 +97,13 @@ class State(pc.State):
 
     def set_password(self, password):
         self.password = password.strip()
+        if len(self.password) > 7:
+            State.alert_password = False
 
     def set_confirm_password(self, confirm_password):
         self.confirm_password = confirm_password.strip()
+        if self.password == self.confirm_password:
+            State.alert_confirm_password = False
 
     def set_target_userid(self, target_userid):
         self.target_userid = target_userid.strip()
@@ -114,7 +120,6 @@ class State(pc.State):
         self.exist_result = False
         self.exist_answer = False
         self.target_results = []
-
 
         with pc.session() as session:
             exist_user = session.query(User).where(User.userid == self.target_userid).first()
@@ -277,11 +282,31 @@ def signup():
                     pc.input(
                         type_="password", on_blur=State.set_password, placeholder="Password", width="100%"
                     ),
+                    pc.cond(
+                        State.alert_password,
+                        pc.alert(
+                            pc.alert_icon(),
+                            pc.alert_title(
+                                "비밀번호는 8자리 이상으로 해주세요"
+                            ),
+                            status="error"
+                        ),
+                    ),
                     pc.input(
                         type_="password",
                         on_blur=State.set_confirm_password,
                         placeholder="Password Confirm",
                         width="100%",
+                    ),
+                    pc.cond(
+                        State.alert_confirm_password,
+                        pc.alert(
+                            pc.alert_icon(),
+                            pc.alert_title(
+                                "비밀번호를 확인해주세요"
+                            ),
+                            status="error"
+                        ),
                     ),
                     pc.button("회원가입", on_click=State.signup, width="100%"),
                 ),
