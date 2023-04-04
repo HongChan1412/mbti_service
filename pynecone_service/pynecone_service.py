@@ -155,6 +155,10 @@ class State(pc.State):
             self.question_data = session.query(Question).all()
             return pc.redirect("/question")
 
+    # def load_result(self):
+    #     with pc.session() as session:
+
+
 
     def next_question(self):
         if self.question_idx == 12:
@@ -240,18 +244,14 @@ class State(pc.State):
 
     @pc.var
     def get_target_username(self):
-        return self.target_data["user"]["username"]
+        return self.target_data["user"]["target_username"]
 
     @pc.var
     def get_target_mbti(self):
         return self.target_data["info"]["mbti"]
 
     # @pc.var
-    # def get_result(self):
-    #     with pc.session() as session:
-    #         res = session.query(MbtiResult).where(MbtiResult.userid == self.target_data["user"]["userid"], MbtiResult.target_userid == self.target_data["user"]["target_userid"]).first()
-    #         self.result_mbti = res.mbti
-    #         self.result_score = res.score
+    # def get_
 
     @pc.var
     def judge_mypage(self):
@@ -527,7 +527,7 @@ def result():
                 pc.vstack(
                     pc.cond(
                         State.logged_in,
-                        pc.text(State.username+"의 MBTI: "+State.usermbti),
+                        pc.text(State.get_target_username+"의 MBTI: "+State.get_target_mbti),
                         login()
                     ),
                 ),
