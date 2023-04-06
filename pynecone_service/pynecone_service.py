@@ -250,6 +250,10 @@ class State(pc.State):
     def get_target_mbti(self):
         return self.target_data["info"]["mbti"]
 
+    @pc.var
+    def get_target_score(self):
+        return self.target_data["info"]["score"]
+
     # @pc.var
     # def get_
 
@@ -403,7 +407,8 @@ def user():
                                         pc.cond(
                                             State.exist_answer,
                                             pc.vstack(
-                                                pc.text(State.username+"님이 생각하시는 "+State.get_target_username+"님의 MBTI는 "+State.get_target_mbti+"입니다"),
+                                                pc.text(State.username + "님이 생각하시는 " + State.get_target_username + "님의 MBTI는 "),
+                                                pc.text(State.get_target_mbti + "입니다, 점수는 " + State.get_target_score+"입니다"),
                                                 pc.button(State.get_target_username + "님의 MBTI 테스트 다시하기", on_click=State.load_question, width="100%"),
                                             ),
                                             pc.button(State.get_target_username + "님의 MBTI 테스트하기", on_click=State.load_question, width="100%"),
@@ -527,7 +532,12 @@ def result():
                 pc.vstack(
                     pc.cond(
                         State.logged_in,
-                        pc.text(State.get_target_username+"의 MBTI: "+State.get_target_mbti),
+                        pc.vstack(
+                            pc.text(State.username+"님이 생각하시는 "+State.get_target_username+"님의 MBTI는 "),
+                            pc.text(State.get_target_mbti+"입니다, 점수는 "+State.get_target_score+"입니다"),
+
+                        ),
+
                         login()
                     ),
                 ),
