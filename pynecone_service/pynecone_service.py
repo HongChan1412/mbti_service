@@ -3,6 +3,7 @@ from .helpers import navbar
 from typing import List
 import bcrypt
 import os
+import re
 
 class User(pc.Model, table=True):
     username: str
@@ -66,7 +67,7 @@ class State(pc.State):
             if user and bcrypt.checkpw(self.password.encode('utf-8'), user.password.encode('utf-8')):
                 self.logged_in = True
                 self.username = user.username
-                return self.load_user(True)
+                return self.load_user(self.userid)
 
             else:
                 return pc.window_alert("아이디, 비밀번호를 확인해주세요")
@@ -120,19 +121,24 @@ class State(pc.State):
         else:
             return True
 
-    def load_user(self, mypage=False):
-        if mypage:
-            self.target_userid = self.userid
+    @pc.var
+    def alert_id(self):
+        if re.search(r'^[A-Za-z0-9_]{4,20}$', self.userid):
+            return False
         else:
-            if not self.target_userid:
-                self.target_userid = self.get_query_params().get("user")
+            return True
 
+    def load_user(self, target_userid=None):
+        if not target_userid:
+            self.target_userid = self.get_query_params().get("user")
+        else:
+            self.target_userid = target_userid
+        self.target_userid = re.sub(r"[^\uAC00-\uD7A30-9a-zA-Z\s]", "", self.target_userid)
         self.target_data = {"user": {"userid": self.userid, "username": "", "target_userid": self.target_userid, "target_username": ""}, "info": {"mbti": "", "score": 0.0, "question_result": {1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "", 11: "", 12: ""}}}
         self.exist_user = False
         self.exist_result = False
         self.exist_answer = False
         self.target_results = []
-
         with pc.session() as session:
             exist_user = session.query(User).where(User.userid == self.target_userid).first()
             if exist_user:
@@ -154,11 +160,6 @@ class State(pc.State):
         with pc.session() as session:
             self.question_data = session.query(Question).all()
             return pc.redirect("/question")
-
-    # def load_result(self):
-    #     with pc.session() as session:
-
-
 
     def next_question(self):
         if self.question_idx == 12:
@@ -254,8 +255,6 @@ class State(pc.State):
     def get_target_score(self):
         return self.target_data["info"]["score"]
 
-    # @pc.var
-    # def get_
 
     @pc.var
     def judge_mypage(self):
@@ -314,6 +313,16 @@ def signup():
                     pc.input(
                         on_blur=State.set_username, placeholder="Username", width="100%"
                     ),
+                    pc.cond(
+                        State.alert_id,
+                        pc.alert(
+                            pc.alert_icon(),
+                            pc.alert_title(
+                                "아이디는 영어 대소문자, 숫자와 '_'기호만을 활용하여 4자 이상 20자 이하로 입력해주세요"
+                            ),
+                            status="error"
+                        )
+                    ),
                     pc.input(
                         on_blur=State.set_userid, placeholder="Userid", width="100%"
                     ),
@@ -325,7 +334,7 @@ def signup():
                         pc.alert(
                             pc.alert_icon(),
                             pc.alert_title(
-                                "비밀번호는 8자리 이상으로 해주세요"
+                                "비밀번호는 8자리 이상으로 입력해주세요"
                             ),
                             status="error"
                         ),
@@ -443,9 +452,9 @@ def user():
                         ),
                         pc.center(
                             pc.input(on_blur=State.set_target_userid, placeholder="Userid", width="100%"),
-                            pc.button("친구 페이지로 이동하기", on_click=lambda: State.load_user(False), width="100%"),
+                            pc.button("친구 페이지로 이동하기", on_click=lambda: State.load_user(State.target_userid), width="100%"),
                         ),
-                        pc.button("마이페이지로 이동하기", on_click=lambda: State.load_user(True), width="100%")
+                        pc.button("마이페이지로 이동하기", on_click=lambda: State.load_user(State.userid), width="100%")
                     ),
                     shadow="lg",
                     padding="1em",
