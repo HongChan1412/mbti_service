@@ -109,7 +109,7 @@ class State(pc.State):
 
     @pc.var
     def alert_password(self):
-        if len(self.password) > 7:
+        if re.search(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%&*?])[A-Za-z\d!@#$%&*?]{8,20}$', self.password):
             return False
         else:
             return True
@@ -124,6 +124,13 @@ class State(pc.State):
     @pc.var
     def alert_id(self):
         if re.search(r'^[A-Za-z0-9_]{4,20}$', self.userid):
+            return False
+        else:
+            return True
+
+    @pc.var
+    def alert_username_set(self):
+        if re.search(r'^[A-Za-z0-9_ㄱ-ㅎㅏ-ㅣ가-힣]{2,20}$', self.username_set):
             return False
         else:
             return True
@@ -242,7 +249,6 @@ class State(pc.State):
         self.mbti_data = {"E": 0, "I": 0, "S": 0, "N": 0, "T": 0, "F": 0, "J": 0, "P": 0}
         return pc.redirect("/result")
 
-
     @pc.var
     def get_target_username(self):
         return self.target_data["user"]["target_username"]
@@ -264,8 +270,7 @@ class State(pc.State):
 
     @pc.var
     def judge_signup(self) -> bool:
-        if (len(self.password) > 7) and (self.password == self.confirm_password):
-            print(len(self.password))
+        if (re.search(r'^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%&*?])[A-Za-z\d!@#$%&*?]{8,20}$', self.password)) and (self.password == self.confirm_password) and (re.search(r'^[A-Za-z0-9_]{4,20}$', self.userid)) and (re.search(r'^[A-Za-z0-9_ㄱ-ㅎㅏ-ㅣ가-힣]{2,20}$', self.username_set)):
             return False
         return True
 
@@ -307,66 +312,81 @@ def signup():
     return pc.box(
         pc.vstack(
             navbar(State),
-            pc.center(
-                pc.vstack(
-                    pc.heading("MBTI 테스트 회원가입", font_size="1.5em"),
-                    pc.input(
-                        on_blur=State.set_username, placeholder="Username", width="100%"
-                    ),
-                    pc.cond(
-                        State.alert_id,
-                        pc.alert(
-                            pc.alert_icon(),
-                            pc.alert_title(
-                                "아이디는 영어 대소문자, 숫자와 '_'기호만을 활용하여 4자 이상 20자 이하로 입력해주세요"
-                            ),
-                            status="error"
-                        )
-                    ),
-                    pc.input(
-                        on_blur=State.set_userid, placeholder="Userid", width="100%"
-                    ),
-                    pc.input(
-                        type_="password", on_blur=State.set_password, placeholder="Password", width="100%"
-                    ),
-                    pc.cond(
-                        State.alert_password,
-                        pc.alert(
-                            pc.alert_icon(),
-                            pc.alert_title(
-                                "비밀번호는 8자리 이상으로 입력해주세요"
-                            ),
-                            status="error"
-                        ),
-                    ),
-                    pc.input(
-                        type_="password",
-                        on_blur=State.set_confirm_password,
-                        placeholder="Password Confirm",
-                        width="100%",
-                    ),
-                    pc.cond(
-                        State.alert_confirm_password,
-                        pc.alert(
-                            pc.alert_icon(),
-                            pc.alert_title(
-                                "비밀번호를 확인해주세요"
-                            ),
-                            status="error"
-                        ),
-                    ),
-                    pc.button(
-                        "회원가입",
-                        on_click=State.signup,
-                        # is_disabled=State.judge_signup,
-                        is_disabled=State.judge_signup,
-                        width="100%"),
+            pc.cond(
+                State.logged_in,
+                pc.center(
+                    pc.link(pc.button("마이페이지", width="100%"), href="/" + State.userid, width="100%"),
                 ),
-                shadow="lg",
-                padding="1em",
-                border_radius="lg",
-                background="white",
-            )
+                pc.center(
+                    pc.vstack(
+                        pc.heading("MBTI 테스트 회원가입", font_size="1.5em"),
+                        pc.input(
+                            on_blur=State.set_username, placeholder="Username", width="100%"
+                        ),
+                        pc.cond(
+                            State.alert_username_set,
+                            pc.alert(
+                                pc.alert_icon(),
+                                pc.alert_title(
+                                    "이름은 한글, 영어 대소문자, 숫자와 '_'기호만을 활용하여 2자 이상 20자 이하로 입력해주세요"
+                                ),
+                                status="error"
+                            )
+                        ),
+                        pc.input(
+                            on_blur=State.set_userid, placeholder="Userid", width="100%"
+                        ),
+                        pc.cond(
+                            State.alert_id,
+                            pc.alert(
+                                pc.alert_icon(),
+                                pc.alert_title(
+                                    "아이디는 영어 대소문자, 숫자와 '_'기호만을 활용하여 4자 이상 20자 이하로 입력해주세요"
+                                ),
+                                status="error"
+                            )
+                        ),
+                        pc.input(
+                            type_="password", on_blur=State.set_password, placeholder="Password", width="100%"
+                        ),
+                        pc.cond(
+                            State.alert_password,
+                            pc.alert(
+                                pc.alert_icon(),
+                                pc.alert_title(
+                                    "비밀번호는 영문 대소문자, 숫자, 특수문자(!@#$%^&*?)를 사용하되 8자 이상 20자 이한으로 입력해주세요"
+                                ),
+                                status="error"
+                            ),
+                        ),
+                        pc.input(
+                            type_="password",
+                            on_blur=State.set_confirm_password,
+                            placeholder="Password Confirm",
+                            width="100%",
+                        ),
+                        pc.cond(
+                            State.alert_confirm_password,
+                            pc.alert(
+                                pc.alert_icon(),
+                                pc.alert_title(
+                                    "비밀번호를 확인해주세요"
+                                ),
+                                status="error"
+                            ),
+                        ),
+                        pc.button(
+                            "회원가입",
+                            on_click=State.signup,
+                            is_disabled=State.judge_signup,
+                            width="100%"),
+                    ),
+                    shadow="lg",
+                    padding="1em",
+                    border_radius="lg",
+                    background="white",
+                )
+            ),
         ),
         padding_top="10em",
         text_align="top",

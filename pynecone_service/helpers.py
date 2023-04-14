@@ -22,7 +22,7 @@ def navbar(State):
                     pc.menu_divider(),
                     pc.cond(
                         State.logged_in,
-                        pc.link(pc.menu_item("마이페이지"), href="/" + State.userid),
+                        pc.link(pc.menu_item("마이페이지"), on_click=lambda: State.load_user(State.userid)),
                         pc.link(pc.menu_item("로그인"), href="/")
                     ),
                     pc.cond(
