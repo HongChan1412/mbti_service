@@ -576,12 +576,16 @@ def result():
 def show_results(results: MbtiResult):
     return pc.tr(
         pc.td(
-            pc.tooltip(
-                pc.button(
-                    results.username,
-                    width="100%"
+            pc.cond(
+                State.judge_mypage,
+                pc.tooltip(
+                    pc.button(
+                        results.username,
+                        width="100%"
+                    ),
+                    label=results.username + "님 페이지로 이동하기"
                 ),
-                label=results.username+"님 페이지로 이동하기"
+                pc.td(results.username)
             )
         ),
         pc.td(results.mbti),
